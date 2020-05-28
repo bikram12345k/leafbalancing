@@ -181,7 +181,7 @@ for(iter2 in 1:12){	# 12 iterations
   
   
   #############################################################################
-  ## INFERNECE FOR THE AVERAGE TREATMENT EFFECT 
+  ## INFERNECE FOR THE TREATMENT EFFECT 
   #############################################################################
  
 
