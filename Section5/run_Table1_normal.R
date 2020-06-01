@@ -49,10 +49,11 @@ for(iter2 in 1:12){	# 12 iterations
 
   ## GENERATE DATA
   #  Covariates and the treatment assignment
-  d1_1<-data.frame(x1=rnorm(n/4,2,1),x2=runif(n/4,0,4),tr=0)
-  d1_2<-data.frame(x1=rnorm(n/4,6,1),x2=runif(n/4,4,6),tr=0)
-  d3<-data.frame(x1=rnorm(n/2,4,1),x2=runif(n/2,1,6),tr=1)
-
+  d1_1<-data.frame(x1=rnorm(n/4,2,1),x2=runif(n/4,0,4),tr=0) #x3=rbeta(n/4,1,1),x4=rbeta(n/4,1,1),x5=rbeta(n/4,1,1)
+  d1_2<-data.frame(x1=rnorm(n/4,6,1),x2=runif(n/4,4,6),tr=0) #x3=rbeta(n/4,1,1),x4=rbeta(n/4,1,1),x5=rbeta(n/4,1,1)
+  d3<-data.frame(x1=rnorm(n/2,4,1),x2=runif(n/2,1,6),tr=1) #x3=rbeta(n/2,2,1),x4=rbeta(n/2,2,1),x5=rbeta(n/2,2,1)
+		### ADD 3 NEW variables
+	
   mydata<-rbind(d1_1,d1_2,d3)
   mydata$ty<-ifelse(mydata$tr==1,"t","c")  
 
@@ -60,7 +61,7 @@ for(iter2 in 1:12){	# 12 iterations
   ##############################################################
   # propensity score stratification
   
-  glmfit<-glm(tr~x1+x2,family=binomial,
+  glmfit<-glm(tr~x1+x2,family=binomial,#+x3+x4+x5,
               x=TRUE,y=TRUE,data=mydata)
   #summary(glmfit)
   mydata$treatment<-glmfit$y
@@ -77,7 +78,7 @@ for(iter2 in 1:12){	# 12 iterations
   ##############################################################
   # decision tree matching
   ms<-3
-  fit <- rpart(tr~x1+x2,#I(2*x1+x2)+I(x1+2*x2),
+  fit <- rpart(tr~x1+x2,#+x3+x4+x5,	
                method="class", data=mydata,parms=list(split = "information"),
                control = rpart.control(minsplit =ms,cp = 0.0,maxcompete = 20))
   
@@ -92,6 +93,11 @@ for(iter2 in 1:12){	# 12 iterations
   best_smd1 <- c(100,100, 100, 100)
 	mydata$x2.2 = mydata$x2^2
 	mydata$x1.2 = mydata$x1^2
+	
+	#mydata$x3.2 = mydata$x3^2
+	#mydata$x4.2 = mydata$x4^2
+	#mydata$x5.2 = mydata$x5^2
+	
 
   # Search for a good cp.
   for(cpidx in (mincpIdx-1):nrow(fit$cptable)){
@@ -105,7 +111,10 @@ for(iter2 in 1:12){	# 12 iterations
 			match_summv1(data1 = mydata,covrt = "x2",cls="subclass_tree",trt="treatment")$b,
 			match_summv1(data1 = mydata,covrt = "x1.2",cls="subclass_tree",trt="treatment")$b,
 			match_summv1(data1 = mydata,covrt = "x2.2",cls="subclass_tree",trt="treatment")$b)
-
+	  	# match_summv1(data1 = mydata,covrt = "x3",cls="subclass_tree",trt="treatment")$b, 
+	  	#	match_summv1(data1 = mydata,covrt = "x4",cls="subclass_tree",trt="treatment")$b, 
+		# match_summv1(data1 = mydata,covrt = "x5",cls="subclass_tree",trt="treatment")$b) 
+	  	# DO WE WANT TO ADD BALANCE CHECK FOR THE SQUARES?
    
    if(all(abs(best_smd) < abs(best_smd1)+.005)){
 		best_smd1 = best_smd
@@ -134,7 +143,7 @@ for(iter2 in 1:12){	# 12 iterations
   nonpurenodes = as.numeric(colnames(tabulate)[apply(tabulate, 2, function(x) prod(x)>0)])
 
   distmat <- multigrp_dist_struc(mydata, 'newtr', 
-                                  list(mahal=c("x1","x2")), wgts=1)
+                                  list(mahal=c("x1","x2")), wgts=1) # list(mahal=c("x1","x2", "x3", "x4", "x5"))
 
   allmatch <- NULL
   for(s in 1:length(nonpurenodes)){
@@ -160,9 +169,9 @@ for(iter2 in 1:12){	# 12 iterations
   d5$SEQN<-rownames(d5)
   d5$newtr<-d5$tr+1
   distmat1 <- multigrp_dist_struc(d5, 'newtr', 
-                                  list(prop=c("x1","x2")), wgts=1)
+                                  list(prop=c("x1","x2")), wgts=1) # list(prop=c("x1","x2", "x3", "x4", "x5"))
   distmat2 <- multigrp_dist_struc(d5, 'newtr', 
-                                  list(mahal=c("x1","x2")), wgts=1)
+                                  list(mahal=c("x1","x2")), wgts=1) # list(mahal=c("x1","x2", "x3", "x4", "x5"))
   
   distmat<-distmat2  
   distmat[[1]][distmat1[[1]]>.2] <- 500
@@ -224,6 +233,7 @@ for(iter2 in 1:12){	# 12 iterations
 
 	  ## Simulate outcome: 	
 	  mydata$y<-rnorm(n,taui*mydata$tr+mydata$x1+mydata$x2^2,1)
+	  	#taui*mydata$tr+mydata$x1+mydata$x2^2 + mean(mydata$x3+mydata$x4+mydata$m5)
 
 
 	  # Set range of tau where we search for the estimate 
